@@ -1,7 +1,7 @@
 use p3_field::extension::{
-    BinomiallyExtendable, Complex, HasComplexBinomialExtension, HasTwoAdicComplexBinomialExtension,
+    BinomialExtensionField, BinomiallyExtendable, Complex, HasComplexBinomialExtension, HasTwoAdicComplexBinomialExtension
 };
-use p3_field::{field_to_array, AbstractField, TwoAdicField};
+use p3_field::{field_to_array, AbstractExtensionField, AbstractField, ExtensionField, Field, TwoAdicField};
 
 use crate::Mersenne31;
 
@@ -104,6 +104,18 @@ impl HasTwoAdicComplexBinomialExtension<3> for Mersenne31 {
         field_to_array::<Complex<Self>, 3>(Complex::two_adic_generator(bits))
     }
 }
+
+type CM31 = Complex<Mersenne31>;
+type QM31 = BinomialExtensionField<CM31, 2>;
+
+// impl AbstractField for QM31{
+
+// }
+
+// impl ExtensionField<Mersenne31> for QM31{
+//     type ExtensionPacking = BinomialExtensionField<BinomialExtensionField<Mersenne31, 2>, 2>;
+// }
+// impl BinomiallyExtendable<4> for Mersenne31 {}
 
 #[cfg(test)]
 mod test_cubic_extension {

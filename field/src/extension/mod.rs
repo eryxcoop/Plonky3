@@ -5,6 +5,7 @@ use crate::{naive_poly_mul, ExtensionField};
 
 mod binomial_extension;
 mod complex;
+mod quartic_extension;
 
 use alloc::vec;
 use alloc::vec::Vec;
