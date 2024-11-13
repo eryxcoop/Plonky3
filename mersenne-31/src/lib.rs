@@ -18,6 +18,7 @@ mod extension;
 mod mds;
 mod mersenne_31;
 mod poseidon2;
+mod quartic_extension;
 mod radix_2_dit;
 
 pub use dft::Mersenne31Dft;

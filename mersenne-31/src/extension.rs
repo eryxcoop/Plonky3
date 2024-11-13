@@ -1,7 +1,10 @@
 use p3_field::extension::{
-    BinomialExtensionField, BinomiallyExtendable, Complex, HasComplexBinomialExtension, HasTwoAdicComplexBinomialExtension
+    BinomialExtensionField, BinomiallyExtendable, Complex, HasComplexBinomialExtension,
+    HasTwoAdicComplexBinomialExtension,
 };
-use p3_field::{field_to_array, AbstractExtensionField, AbstractField, ExtensionField, Field, TwoAdicField};
+use p3_field::{
+    field_to_array, AbstractExtensionField, AbstractField, ExtensionField, Field, TwoAdicField,
+};
 
 use crate::Mersenne31;
 

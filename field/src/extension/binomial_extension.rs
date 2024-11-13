@@ -576,6 +576,14 @@ impl<F: Field + HasTwoAdicBionmialExtension<D>, const D: usize> TwoAdicField
     }
 }
 
+// impl <F: Field + HasComplexBinomialExtension<D>, const D: usize> BinomiallyExtendable<D> for BinomialExtensionField<F,D>{
+//     const W: F::HasComplexBinomialExtension<D>::W;
+
+//     const DTH_ROOT: F::HasComplexBinomialExtension<D>::DTH_ROOT;
+
+//     const EXT_GENERATOR: F::HasComplexBinomialExtension<D>::EXT_GENERATOR;
+// }
+
 ///Section 11.3.6b in Handbook of Elliptic and Hyperelliptic Curve Cryptography.
 #[inline]
 fn qudratic_inv<F: Field>(a: &[F], w: F) -> [F; 2] {

@@ -12,7 +12,10 @@ num-traits = { version = "0.2.18", default-features = false }
 num-integer = "0.1.46"
 nums = "0.1.0"
 tracing = "0.1.37"
-
-itertools = "0.13.0"
 rand = "0.8.5"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
+itertools = "0.13.0"
+
+[dev-dependencies]
+p3-mersenne-31 = {path ="../mersenne-31"}
+
