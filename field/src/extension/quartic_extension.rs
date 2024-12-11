@@ -1,9 +1,9 @@
 use alloc::{format, vec};
 use alloc::string::ToString;
 use alloc::vec::Vec;
-use core::array;
+use core::{array, cell};
 use core::iter::{Product, Sum};
-use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use itertools::Itertools;
 use num_bigint::BigUint;
@@ -11,6 +11,8 @@ use p3_util::convert_vec;
 use rand::distributions::Standard;
 use rand::prelude::Distribution;
 use serde::{Deserialize, Serialize};
+use cell::RefCell;
+use std::thread_local;
 
 use super::{
     BinomialExtensionField, Complex, ComplexExtendable, HasComplexBinomialExtension, HasFrobenius, HasTwoAdicBionmialExtension
@@ -18,16 +20,17 @@ use super::{
 use crate::extension::BinomiallyExtendable;
 use crate::field::Field;
 use crate::{
-    field_to_array, AbstractExtensionField, AbstractField, ExtensionField, Packable, TwoAdicField,
+    field_to_array, AbstractExtensionField, AbstractField, ExtensionField, Packable, TwoAdicField, FieldArray
 };
 
 type QuarticExtension<AF: AbstractField> = BinomialExtensionField<BinomialExtensionField<AF, 2>, 2>;
 
-impl<AF: AbstractField> MulAssign<AF> for QuarticExtension<AF> {
-    fn mul_assign(&mut self, _: AF) {
-        todo!()
-    }
-}
+// impl<AF> QuarticExtension<AF>{
+// thread_local! {
+//     // Define a thread-local buffer with a mutable [AF; 4] array
+//     static THREAD_BUFFER: RefCell<FieldArray<AF, 4>> = RefCell::new([AF::default(); 4]);
+// }
+// }
 
 impl<AF> Mul<AF> for QuarticExtension<AF>
 where
@@ -46,6 +49,17 @@ where
             value: [real, imaginary],
         }
     }
+}
+
+impl<AF: AbstractField> MulAssign<AF> for QuarticExtension<AF> 
+where
+    AF: AbstractField + BinomiallyExtendable<2>,
+    AF::F: BinomiallyExtendable<2>,
+    BinomialExtensionField<AF, 2>: AbstractField + BinomiallyExtendable<2>,{
+    fn mul_assign(&mut self, rhs: AF) {
+        *self = self.clone() * rhs 
+    }
+    
 }
 
 impl<AF> Sub<AF> for QuarticExtension<AF>
@@ -124,6 +138,8 @@ where
 
 
 
+
+
 impl<AF> AbstractExtensionField<AF> for QuarticExtension<AF>
 where
     AF: AbstractField + ComplexExtendable,
@@ -176,5 +192,6 @@ where
     }
 
 }
+
 
 // */
