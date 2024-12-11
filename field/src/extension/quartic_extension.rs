@@ -2,7 +2,7 @@ use alloc::{format, vec};
 use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::{array, cell};
-use core::iter::{Product, Sum};
+use core::iter::{Extend, Product, Sum};
 use core::ops::{Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use itertools::Itertools;
@@ -20,10 +20,10 @@ use super::{
 use crate::extension::BinomiallyExtendable;
 use crate::field::Field;
 use crate::{
-    field_to_array, AbstractExtensionField, AbstractField, ExtensionField, Packable, TwoAdicField, FieldArray
+    field_to_array, FieldExtensionAlgebra, FieldAlgebra, ExtensionField, Packable, TwoAdicField, FieldArray
 };
 
-type QuarticExtension<AF: AbstractField> = BinomialExtensionField<BinomialExtensionField<AF, 2>, 2>;
+type QuarticExtension<AF: FieldAlgebra> = BinomialExtensionField<BinomialExtensionField<AF, 2>, 2>;
 
 // impl<AF> QuarticExtension<AF>{
 // thread_local! {
@@ -34,9 +34,9 @@ type QuarticExtension<AF: AbstractField> = BinomialExtensionField<BinomialExtens
 
 impl<AF> Mul<AF> for QuarticExtension<AF>
 where
-    AF: AbstractField + BinomiallyExtendable<2>,
+    AF: FieldAlgebra + BinomiallyExtendable<2>,
     AF::F: BinomiallyExtendable<2>,
-    BinomialExtensionField<AF, 2>: AbstractField + BinomiallyExtendable<2>,
+    BinomialExtensionField<AF, 2>: FieldAlgebra + BinomiallyExtendable<2>,
 {
     type Output = Self;
 
@@ -51,11 +51,11 @@ where
     }
 }
 
-impl<AF: AbstractField> MulAssign<AF> for QuarticExtension<AF> 
+impl<AF: FieldAlgebra> MulAssign<AF> for QuarticExtension<AF> 
 where
-    AF: AbstractField + BinomiallyExtendable<2>,
+    AF: FieldAlgebra + BinomiallyExtendable<2>,
     AF::F: BinomiallyExtendable<2>,
-    BinomialExtensionField<AF, 2>: AbstractField + BinomiallyExtendable<2>,{
+    BinomialExtensionField<AF, 2>: FieldAlgebra + BinomiallyExtendable<2>,{
     fn mul_assign(&mut self, rhs: AF) {
         *self = self.clone() * rhs 
     }
@@ -64,9 +64,9 @@ where
 
 impl<AF> Sub<AF> for QuarticExtension<AF>
 where
-    AF: AbstractField + BinomiallyExtendable<2>,
+    AF: FieldAlgebra + BinomiallyExtendable<2>,
     AF::F: BinomiallyExtendable<2>,
-    BinomialExtensionField<AF, 2>: AbstractField + BinomiallyExtendable<2>,
+    BinomialExtensionField<AF, 2>: FieldAlgebra + BinomiallyExtendable<2>,
 {
     type Output = Self;
 
@@ -81,9 +81,9 @@ where
 
 impl<AF> SubAssign<AF> for QuarticExtension<AF>
 where
-    AF: AbstractField + BinomiallyExtendable<2>,
+    AF: FieldAlgebra + BinomiallyExtendable<2>,
     AF::F: BinomiallyExtendable<2>,
-    BinomialExtensionField<AF, 2>: AbstractField + BinomiallyExtendable<2>,
+    BinomialExtensionField<AF, 2>: FieldAlgebra + BinomiallyExtendable<2>,
 {
     #[inline]
     fn sub_assign(&mut self, rhs: AF) {
@@ -93,9 +93,9 @@ where
 
 impl<AF> Add<AF> for QuarticExtension<AF>
 where
-    AF: AbstractField + BinomiallyExtendable<2>,
+    AF: FieldAlgebra + BinomiallyExtendable<2>,
     AF::F: BinomiallyExtendable<2>,
-    BinomialExtensionField<AF, 2>: AbstractField + BinomiallyExtendable<2>,
+    BinomialExtensionField<AF, 2>: FieldAlgebra + BinomiallyExtendable<2>,
 {
     type Output = Self;
 
@@ -110,9 +110,9 @@ where
 
 impl<AF> AddAssign<AF> for QuarticExtension<AF>
 where
-    AF: AbstractField + BinomiallyExtendable<2>,
+    AF: FieldAlgebra + BinomiallyExtendable<2>,
     AF::F: BinomiallyExtendable<2>,
-    BinomialExtensionField<AF, 2>: AbstractField + BinomiallyExtendable<2>,
+    BinomialExtensionField<AF, 2>: FieldAlgebra + BinomiallyExtendable<2>,
 {
     #[inline]
     fn add_assign(&mut self, rhs: AF) {
@@ -122,9 +122,9 @@ where
 
 impl<AF> From<AF> for QuarticExtension<AF> 
 where 
-    AF: AbstractField,
+    AF: FieldAlgebra,
     AF::F: BinomiallyExtendable<2>,
-    BinomialExtensionField<AF, 2>: AbstractField + BinomiallyExtendable<2>,
+    BinomialExtensionField<AF, 2>: FieldAlgebra + BinomiallyExtendable<2>,
 {
     fn from(x: AF) -> Self {
         let mut res = Self::ZERO;
@@ -140,12 +140,12 @@ where
 
 
 
-impl<AF> AbstractExtensionField<AF> for QuarticExtension<AF>
+impl<AF> FieldExtensionAlgebra<AF> for QuarticExtension<AF>
 where
-    AF: AbstractField + ComplexExtendable,
+    AF: FieldAlgebra + ComplexExtendable,
     AF::F: BinomiallyExtendable<2> + HasComplexBinomialExtension<2>,
     AF: Copy,
-    BinomialExtensionField<AF, 2>: BinomiallyExtendable<2> + AbstractExtensionField<AF>,
+    BinomialExtensionField<AF, 2>: BinomiallyExtendable<2> + FieldExtensionAlgebra<AF>,
 {
     const D: usize = 2;
 
@@ -184,10 +184,10 @@ where
 
     #[inline]
     fn as_base_slice(&self) -> &[AF] {
-        // let [real, imaginary] = self.value;
-        // let res: &[AF] = vec![real.value[0], real.value[1], imaginary.value[0], imaginary.value[1]].as_slice();
-        // // res
-        // &[self.value[0].value[0],self.value[0].value[1], self.value[1].value[0], self.value[1].value[1]]
+        let [real, imaginary] = self.value;
+        let res: &[AF] = vec![real.value[0], real.value[1], imaginary.value[0], imaginary.value[1]].as_slice();
+        // res
+        //&[self.value[0].value[0],self.value[0].value[1], self.value[1].value[0], self.value[1].value[1]]
         &self.value[0].value
     }
 

@@ -8,13 +8,14 @@ use p3_challenger::{DuplexChallenger, HashChallenger, SerializingChallenger32};
 use p3_circle::CirclePcs;
 use p3_commit::ExtensionMmcs;
 use p3_field::extension::{BinomialExtensionField, Complex};
-use p3_field::{AbstractField, Field};
+use p3_field::{FieldAlgebra, Field};
 use p3_fri::FriConfig;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_matrix::Matrix;
 use p3_merkle_tree::MerkleTreeMmcs;
-use p3_mersenne_31::{DiffusionMatrixMersenne31, Mersenne31};
-use p3_poseidon2::{Poseidon2, Poseidon2ExternalMatrixGeneral};
+use p3_mersenne_31::{Mersenne31, Poseidon2Mersenne31};
+use p3_poseidon2::{Poseidon2};
+
 use p3_symmetric::{
     CompressionFunctionFromHasher, PaddingFreeSponge, SerializingHasher32, TruncatedPermutation,
 };
@@ -125,31 +126,29 @@ pub fn generate_wide_fibonacci_trace<F: Field>(
     RowMajorMatrix::new(values, num_steps)
 }
 
-pub fn wide_fibonacci_example_with_poseidon(
+
+fn wide_fibonacci_example_with_poseidon(
     num_steps: usize,
     number_of_instances: usize,
-) -> Result<(), impl Debug> {
+)  -> Result<(), impl Debug> {
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy();
+
     type Val = Mersenne31;
     type Challenge = BinomialExtensionField<Val, 3>;
 
-    // copying from example in p3:
-    type Perm = Poseidon2<Val, Poseidon2ExternalMatrixGeneral, DiffusionMatrixMersenne31, 16, 5>;
-    let perm = Perm::new_from_rng_128(
-        Poseidon2ExternalMatrixGeneral,
-        DiffusionMatrixMersenne31,
-        &mut thread_rng(),
-    );
+    type Perm16 = Poseidon2Mersenne31<16>;
+    let perm16 = Perm16::new_from_rng_128(&mut thread_rng());
 
-    type MyHash = PaddingFreeSponge<Perm, 16, 8, 8>;
-    let hash = MyHash::new(perm.clone());
+    type Perm24 = Poseidon2Mersenne31<24>;
+    let perm24 = Perm24::new_from_rng_128(&mut thread_rng());
 
-    // type ByteHash = Keccak256Hash;
-    // type FieldHash = SerializingHasher32<ByteHash>;
-    // let byte_hash = ByteHash {};
-    // let field_hash = FieldHash::new(Keccak256Hash {});
+    type MyHash = PaddingFreeSponge<Perm24, 24, 16, 8>;
+    let hash = MyHash::new(perm24.clone());
 
-    type MyCompress = TruncatedPermutation<Perm, 2, 8, 16>;
-    let compress = MyCompress::new(perm.clone());
+    type MyCompress = TruncatedPermutation<Perm16, 2, 8, 16>;
+    let compress = MyCompress::new(perm16.clone());
 
     type ValMmcs =
         MerkleTreeMmcs<<Val as Field>::Packing, <Val as Field>::Packing, MyHash, MyCompress, 8>;
@@ -158,16 +157,21 @@ pub fn wide_fibonacci_example_with_poseidon(
     type ChallengeMmcs = ExtensionMmcs<Val, Challenge, ValMmcs>;
     let challenge_mmcs = ChallengeMmcs::new(val_mmcs.clone());
 
-    type Challenger = DuplexChallenger<Val, Perm, 16, 8>;
+    type Challenger = DuplexChallenger<Val, Perm24, 24, 16>;
 
-    // Default fri config from the stwo repo.
+    let air = WideFibonacciAir {
+        num_steps,
+        number_of_instances,
+    };
+    let trace = generate_wide_fibonacci_trace::<Val>(number_of_instances, num_steps);
+
+
     let fri_config = FriConfig {
         log_blowup: 1,
-        num_queries: 3,
-        proof_of_work_bits: 5,
+        num_queries: 100,
+        proof_of_work_bits: 16,
         mmcs: challenge_mmcs,
     };
-
     type Pcs = CirclePcs<Val, ValMmcs, ChallengeMmcs>;
     let pcs = Pcs {
         mmcs: val_mmcs,
@@ -178,53 +182,40 @@ pub fn wide_fibonacci_example_with_poseidon(
     type MyConfig = StarkConfig<Pcs, Challenge, Challenger>;
     let config = MyConfig::new(pcs);
 
-    // end of prover configs
-
-    // beggining of defining the trace and the constraints
-
-    // let num_steps = 1024; // Choose the number of Fibonacci steps
-    //let final_value = 546362568;// 762037372 Choose the final Fibonacci value
-    let air = WideFibonacciAir {
-        num_steps,
-        number_of_instances,
-    };
-    let trace = generate_wide_fibonacci_trace::<Val>(number_of_instances, num_steps);
-
-    let mut challenger = Challenger::new(perm.clone());
+    let mut challenger = Challenger::new(perm24.clone());
     let proof = prove(&config, &air, &mut challenger, trace, &vec![]);
 
-    let mut challenger = Challenger::new(perm);
+    let mut challenger = Challenger::new(perm24.clone());
     verify(&config, &air, &mut challenger, &proof, &vec![])
 }
 
-pub fn wide_fibonacci_example_with_poseidon_QM31(
+fn wide_fibonacci_example_with_poseidon_QM31(
     num_steps: usize,
     number_of_instances: usize,
-) -> Result<(), impl Debug> {
+)  -> Result<(), impl Debug> {
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy();
+
     type Val = Mersenne31;
     type CM31 = Complex<Val>;
     type QM31 = BinomialExtensionField<CM31, 2>;
-    // type Challenge = QM31;
+
+    //type Challenge = QM31;
     type Challenge = BinomialExtensionField<Val, 3>;
 
-    // copying from example in p3:
-    type Perm = Poseidon2<Val, Poseidon2ExternalMatrixGeneral, DiffusionMatrixMersenne31, 16, 5>;
-    let perm = Perm::new_from_rng_128(
-        Poseidon2ExternalMatrixGeneral,
-        DiffusionMatrixMersenne31,
-        &mut thread_rng(),
-    );
 
-    type MyHash = PaddingFreeSponge<Perm, 16, 8, 8>;
-    let hash = MyHash::new(perm.clone());
+    type Perm16 = Poseidon2Mersenne31<16>;
+    let perm16 = Perm16::new_from_rng_128(&mut thread_rng());
 
-    // type ByteHash = Keccak256Hash;
-    // type FieldHash = SerializingHasher32<ByteHash>;
-    // let byte_hash = ByteHash {};
-    // let field_hash = FieldHash::new(Keccak256Hash {});
+    type Perm24 = Poseidon2Mersenne31<24>;
+    let perm24 = Perm24::new_from_rng_128(&mut thread_rng());
 
-    type MyCompress = TruncatedPermutation<Perm, 2, 8, 16>;
-    let compress = MyCompress::new(perm.clone());
+    type MyHash = PaddingFreeSponge<Perm24, 24, 16, 8>;
+    let hash = MyHash::new(perm24.clone());
+
+    type MyCompress = TruncatedPermutation<Perm16, 2, 8, 16>;
+    let compress = MyCompress::new(perm16.clone());
 
     type ValMmcs =
         MerkleTreeMmcs<<Val as Field>::Packing, <Val as Field>::Packing, MyHash, MyCompress, 8>;
@@ -233,16 +224,21 @@ pub fn wide_fibonacci_example_with_poseidon_QM31(
     type ChallengeMmcs = ExtensionMmcs<Val, Challenge, ValMmcs>;
     let challenge_mmcs = ChallengeMmcs::new(val_mmcs.clone());
 
-    type Challenger = DuplexChallenger<Val, Perm, 16, 8>;
+    type Challenger = DuplexChallenger<Val, Perm24, 24, 16>;
 
-    // Default fri config from the stwo repo.
+    let air = WideFibonacciAir {
+        num_steps,
+        number_of_instances,
+    };
+    let trace = generate_wide_fibonacci_trace::<Val>(number_of_instances, num_steps);
+
+
     let fri_config = FriConfig {
         log_blowup: 1,
-        num_queries: 3,
-        proof_of_work_bits: 5,
+        num_queries: 100,
+        proof_of_work_bits: 16,
         mmcs: challenge_mmcs,
     };
-
     type Pcs = CirclePcs<Val, ValMmcs, ChallengeMmcs>;
     let pcs = Pcs {
         mmcs: val_mmcs,
@@ -253,24 +249,13 @@ pub fn wide_fibonacci_example_with_poseidon_QM31(
     type MyConfig = StarkConfig<Pcs, Challenge, Challenger>;
     let config = MyConfig::new(pcs);
 
-    // end of prover configs
-
-    // beggining of defining the trace and the constraints
-
-    // let num_steps = 1024; // Choose the number of Fibonacci steps
-    //let final_value = 546362568;// 762037372 Choose the final Fibonacci value
-    let air = WideFibonacciAir {
-        num_steps,
-        number_of_instances,
-    };
-    let trace = generate_wide_fibonacci_trace::<Val>(number_of_instances, num_steps);
-
-    let mut challenger = Challenger::new(perm.clone());
+    let mut challenger = Challenger::new(perm24.clone());
     let proof = prove(&config, &air, &mut challenger, trace, &vec![]);
 
-    let mut challenger = Challenger::new(perm);
+    let mut challenger = Challenger::new(perm24.clone());
     verify(&config, &air, &mut challenger, &proof, &vec![])
 }
+
 
 #[cfg(test)]
 mod tests {

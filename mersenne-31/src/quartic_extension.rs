@@ -10,7 +10,7 @@ use extension::BinomiallyExtendable;
 use itertools::Itertools;
 use num_bigint::BigUint;
 use p3_field::extension::{self, BinomialExtensionField};
-use p3_field::AbstractField;
+use p3_field::FieldAlgebra;
 use p3_util::convert_vec;
 use rand::distributions::Standard;
 use rand::prelude::Distribution;
@@ -24,7 +24,7 @@ type QuarticExtension = BinomialExtensionField<BinomialExtensionField<Mersenne31
 mod tests {
     use extension::Complex;
     use itertools::Itertools;
-    use {AbstractField, Mersenne31};
+    use {FieldAlgebra, Mersenne31};
 
     use super::*;
 
