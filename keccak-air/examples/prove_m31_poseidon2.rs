@@ -9,8 +9,7 @@ use p3_field::Field;
 use p3_fri::FriConfig;
 use p3_keccak_air::{generate_trace_rows, KeccakAir};
 use p3_merkle_tree::MerkleTreeMmcs;
-use p3_mersenne_31::{DiffusionMatrixMersenne31, Mersenne31};
-use p3_poseidon2::{Poseidon2, Poseidon2ExternalMatrixGeneral};
+use p3_mersenne_31::{Mersenne31, Poseidon2Mersenne31};
 use p3_symmetric::{PaddingFreeSponge, TruncatedPermutation};
 use p3_uni_stark::{prove, verify, StarkConfig};
 use rand::{random, thread_rng};
@@ -35,18 +34,17 @@ fn main() -> Result<(), impl Debug> {
     type Val = Mersenne31;
     type Challenge = BinomialExtensionField<Val, 3>;
 
-    type Perm = Poseidon2<Val, Poseidon2ExternalMatrixGeneral, DiffusionMatrixMersenne31, 16, 5>;
-    let perm = Perm::new_from_rng_128(
-        Poseidon2ExternalMatrixGeneral,
-        DiffusionMatrixMersenne31,
-        &mut thread_rng(),
-    );
+    type Perm16 = Poseidon2Mersenne31<16>;
+    let perm16 = Perm16::new_from_rng_128(&mut thread_rng());
 
-    type MyHash = PaddingFreeSponge<Perm, 16, 8, 8>;
-    let hash = MyHash::new(perm.clone());
+    type Perm24 = Poseidon2Mersenne31<24>;
+    let perm24 = Perm24::new_from_rng_128(&mut thread_rng());
 
-    type MyCompress = TruncatedPermutation<Perm, 2, 8, 16>;
-    let compress = MyCompress::new(perm.clone());
+    type MyHash = PaddingFreeSponge<Perm24, 24, 16, 8>;
+    let hash = MyHash::new(perm24.clone());
+
+    type MyCompress = TruncatedPermutation<Perm16, 2, 8, 16>;
+    let compress = MyCompress::new(perm16.clone());
 
     type ValMmcs =
         MerkleTreeMmcs<<Val as Field>::Packing, <Val as Field>::Packing, MyHash, MyCompress, 8>;
@@ -55,7 +53,7 @@ fn main() -> Result<(), impl Debug> {
     type ChallengeMmcs = ExtensionMmcs<Val, Challenge, ValMmcs>;
     let challenge_mmcs = ChallengeMmcs::new(val_mmcs.clone());
 
-    type Challenger = DuplexChallenger<Val, Perm, 16, 8>;
+    type Challenger = DuplexChallenger<Val, Perm24, 24, 16>;
 
     let fri_config = FriConfig {
         log_blowup: 1,
@@ -77,9 +75,9 @@ fn main() -> Result<(), impl Debug> {
     let inputs = (0..NUM_HASHES).map(|_| random()).collect::<Vec<_>>();
     let trace = generate_trace_rows::<Val>(inputs);
 
-    let mut challenger = Challenger::new(perm.clone());
+    let mut challenger = Challenger::new(perm24.clone());
     let proof = prove(&config, &KeccakAir {}, &mut challenger, trace, &vec![]);
 
-    let mut challenger = Challenger::new(perm);
+    let mut challenger = Challenger::new(perm24);
     verify(&config, &KeccakAir {}, &mut challenger, &proof, &vec![])
 }

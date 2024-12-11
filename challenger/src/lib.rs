@@ -17,7 +17,7 @@ pub use duplex_challenger::*;
 pub use grinding_challenger::*;
 pub use hash_challenger::*;
 pub use multi_field_challenger::*;
-use p3_field::{AbstractExtensionField, Field};
+use p3_field::{Field, FieldExtensionAlgebra};
 pub use serializing_challenger::*;
 
 pub trait CanObserve<T> {
@@ -52,17 +52,17 @@ pub trait CanSampleBits<T> {
 pub trait FieldChallenger<F: Field>:
     CanObserve<F> + CanSample<F> + CanSampleBits<usize> + Sync
 {
-    fn observe_ext_element<EF: AbstractExtensionField<F>>(&mut self, ext: EF) {
+    fn observe_ext_element<EF: FieldExtensionAlgebra<F>>(&mut self, ext: EF) {
         self.observe_slice(ext.as_base_slice());
     }
 
-    fn sample_ext_element<EF: AbstractExtensionField<F>>(&mut self) -> EF {
+    fn sample_ext_element<EF: FieldExtensionAlgebra<F>>(&mut self) -> EF {
         let vec = self.sample_vec(EF::D);
         EF::from_base_slice(&vec)
     }
 }
 
-impl<'a, C, T> CanObserve<T> for &'a mut C
+impl<C, T> CanObserve<T> for &mut C
 where
     C: CanObserve<T>,
 {
@@ -80,7 +80,7 @@ where
     }
 }
 
-impl<'a, C, T> CanSample<T> for &'a mut C
+impl<C, T> CanSample<T> for &mut C
 where
     C: CanSample<T>,
 {
@@ -100,7 +100,7 @@ where
     }
 }
 
-impl<'a, C, T> CanSampleBits<T> for &'a mut C
+impl<C, T> CanSampleBits<T> for &mut C
 where
     C: CanSampleBits<T>,
 {
@@ -110,17 +110,17 @@ where
     }
 }
 
-impl<'a, C, F: Field> FieldChallenger<F> for &'a mut C
+impl<C, F: Field> FieldChallenger<F> for &mut C
 where
     C: FieldChallenger<F>,
 {
     #[inline(always)]
-    fn observe_ext_element<EF: AbstractExtensionField<F>>(&mut self, ext: EF) {
+    fn observe_ext_element<EF: FieldExtensionAlgebra<F>>(&mut self, ext: EF) {
         (**self).observe_ext_element(ext)
     }
 
     #[inline(always)]
-    fn sample_ext_element<EF: AbstractExtensionField<F>>(&mut self) -> EF {
+    fn sample_ext_element<EF: FieldExtensionAlgebra<F>>(&mut self) -> EF {
         (**self).sample_ext_element()
     }
 }

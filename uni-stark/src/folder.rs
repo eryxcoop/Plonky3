@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use p3_air::{AirBuilder, AirBuilderWithPublicValues};
-use p3_field::AbstractField;
+use p3_field::FieldAlgebra;
 use p3_matrix::dense::RowMajorMatrixView;
 use p3_matrix::stack::VerticalPair;
 
@@ -71,7 +71,7 @@ impl<'a, SC: StarkGenericConfig> AirBuilder for ProverConstraintFolder<'a, SC> {
     }
 }
 
-impl<'a, SC: StarkGenericConfig> AirBuilderWithPublicValues for ProverConstraintFolder<'a, SC> {
+impl<SC: StarkGenericConfig> AirBuilderWithPublicValues for ProverConstraintFolder<'_, SC> {
     type PublicVar = Self::F;
 
     #[inline]
@@ -113,7 +113,7 @@ impl<'a, SC: StarkGenericConfig> AirBuilder for VerifierConstraintFolder<'a, SC>
     }
 }
 
-impl<'a, SC: StarkGenericConfig> AirBuilderWithPublicValues for VerifierConstraintFolder<'a, SC> {
+impl<SC: StarkGenericConfig> AirBuilderWithPublicValues for VerifierConstraintFolder<'_, SC> {
     type PublicVar = Self::F;
 
     fn public_values(&self) -> &[Self::F] {

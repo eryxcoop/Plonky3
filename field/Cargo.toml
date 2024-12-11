@@ -19,3 +19,14 @@ itertools = "0.13.0"
 [dev-dependencies]
 p3-mersenne-31 = {path ="../mersenne-31"}
 
+p3-util.workspace = true
+p3-maybe-rayon.workspace = true
+num-bigint.workspace = true
+num-traits.workspace = true
+num-integer.workspace = true
+nums.workspace = true
+tracing.workspace = true
+
+itertools.workspace = true
+rand.workspace = true
+serde = { workspace = true, features = ["derive"] }

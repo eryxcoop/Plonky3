@@ -16,7 +16,12 @@ impl<F, EF, Inner> FlatMatrixView<F, EF, Inner> {
     pub fn new(inner: Inner) -> Self {
         Self(inner, PhantomData)
     }
-    pub fn inner_ref(&self) -> &Inner {
+}
+
+impl<F, EF, Inner> Deref for FlatMatrixView<F, EF, Inner> {
+    type Target = Inner;
+
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
@@ -49,14 +54,12 @@ where
     }
 
     fn row_slice(&self, r: usize) -> impl Deref<Target = [F]> {
-        let ef_row: Vec<F> = self
-            .0
+        self.0
             .row_slice(r)
             .iter()
             .flat_map(|val| val.as_base_slice())
             .copied()
-            .collect();
-        ef_row
+            .collect::<Vec<_>>()
     }
 }
 
@@ -89,7 +92,7 @@ mod tests {
     use alloc::vec;
 
     use p3_field::extension::Complex;
-    use p3_field::{AbstractExtensionField, AbstractField};
+    use p3_field::{FieldAlgebra, FieldExtensionAlgebra};
     use p3_mersenne_31::Mersenne31;
 
     use super::*;

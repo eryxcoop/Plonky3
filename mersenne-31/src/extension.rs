@@ -3,8 +3,9 @@ use p3_field::extension::{
     HasTwoAdicComplexBinomialExtension,
 };
 use p3_field::{
-    field_to_array, AbstractExtensionField, AbstractField, ExtensionField, Field, TwoAdicField,
+    field_to_array, FieldExtensionAlgebra, FieldAlgebra, ExtensionField, Field, TwoAdicField,
 };
+
 
 use crate::Mersenne31;
 

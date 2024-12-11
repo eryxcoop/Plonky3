@@ -15,7 +15,7 @@ use alloc::vec::Vec;
 use itertools::{izip, Itertools};
 use p3_dft::TwoAdicSubgroupDft;
 use p3_field::extension::Complex;
-use p3_field::{AbstractField, Field, TwoAdicField};
+use p3_field::{Field, FieldAlgebra, TwoAdicField};
 use p3_matrix::dense::RowMajorMatrix;
 use p3_matrix::Matrix;
 use p3_util::log2_strict_usize;
@@ -77,7 +77,7 @@ fn dft_postprocess(input: RowMajorMatrix<C>) -> RowMajorMatrix<C> {
             let even = x + y.conjugate();
             // odd = (x - y.conjugate()) * -i
             let odd = C::new(x.imag() + y.imag(), y.real() - x.real());
-            (even + odd * omega_j).div_2exp_u64(1)
+            (even + odd * omega_j).halve()
         });
         output.extend(row);
         omega_j *= omega;
@@ -110,7 +110,7 @@ fn idft_preprocess(input: RowMajorMatrix<C>) -> RowMajorMatrix<C> {
             let even = x + y.conjugate();
             // odd = (x - y.conjugate()) * -i
             let odd = C::new(x.imag() + y.imag(), y.real() - x.real());
-            (even - odd * omega_j).div_2exp_u64(1)
+            (even - odd * omega_j).halve()
         });
         output.extend(row);
         omega_j *= omega;

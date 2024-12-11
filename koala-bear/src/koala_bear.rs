@@ -1,4 +1,4 @@
-use p3_field::{exp_1420470955, exp_u64_by_squaring, AbstractField, Field};
+use p3_field::{exp_1420470955, exp_u64_by_squaring, Field, FieldAlgebra};
 use p3_monty_31::{
     BarrettParameters, BinomialExtensionData, FieldParameters, MontyField31, MontyParameters,
     PackedMontyParameters, TwoAdicData,
@@ -29,7 +29,7 @@ impl BarrettParameters for KoalaBearParameters {}
 impl FieldParameters for KoalaBearParameters {
     const MONTY_GEN: KoalaBear = KoalaBear::new(3);
 
-    fn exp_u64_generic<AF: AbstractField>(val: AF, power: u64) -> AF {
+    fn exp_u64_generic<FA: FieldAlgebra>(val: FA, power: u64) -> FA {
         match power {
             1420470955 => exp_1420470955(val), // used to compute x^{1/7}
             _ => exp_u64_by_squaring(val, power),
@@ -75,14 +75,16 @@ impl TwoAdicData for KoalaBearParameters {
         0x205d63c3, 0x68e7dd49, 0x6ac49f88,
     ]);
 
-    const ROOTS_8: Self::ArrayLike = &KoalaBear::new_array([0x6832fe4a, 0x7e010002, 0x174e3650]);
-    const INV_ROOTS_8: Self::ArrayLike = &KoalaBear::new_array([0x67b1c9b1, 0xfeffff, 0x16cd01b7]);
+    const ROOTS_8: Self::ArrayLike =
+        &KoalaBear::new_array([0x1, 0x6832fe4a, 0x7e010002, 0x174e3650]);
+    const INV_ROOTS_8: Self::ArrayLike =
+        &KoalaBear::new_array([0x1, 0x67b1c9b1, 0xfeffff, 0x16cd01b7]);
 
     const ROOTS_16: Self::ArrayLike = &KoalaBear::new_array([
-        0x8dbd69c, 0x6832fe4a, 0x27ae21e2, 0x7e010002, 0x3a89a025, 0x174e3650, 0x27dfce22,
+        0x1, 0x8dbd69c, 0x6832fe4a, 0x27ae21e2, 0x7e010002, 0x3a89a025, 0x174e3650, 0x27dfce22,
     ]);
     const INV_ROOTS_16: Self::ArrayLike = &KoalaBear::new_array([
-        0x572031df, 0x67b1c9b1, 0x44765fdc, 0xfeffff, 0x5751de1f, 0x16cd01b7, 0x76242965,
+        0x1, 0x572031df, 0x67b1c9b1, 0x44765fdc, 0xfeffff, 0x5751de1f, 0x16cd01b7, 0x76242965,
     ]);
 }
 

@@ -11,22 +11,23 @@ use core::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use num_bigint::BigUint;
 use p3_field::{
-    AbstractField, Field, Packable, PrimeField, PrimeField32, PrimeField64, TwoAdicField,
+    Field, FieldAlgebra, Packable, PrimeField, PrimeField32, PrimeField64, TwoAdicField,
 };
 use rand::distributions::{Distribution, Standard};
 use rand::Rng;
+use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::{
-    from_monty, halve_u32, monty_reduce, to_monty, to_monty_64, FieldParameters, MontyParameters,
-    TwoAdicData,
-};
+use crate::utils::{from_monty, halve_u32, monty_reduce, to_monty, to_monty_64};
+use crate::{FieldParameters, MontyParameters, TwoAdicData};
 
 #[derive(Clone, Copy, Default, Eq, Hash, PartialEq)]
 #[repr(transparent)] // Packed field implementations rely on this!
 pub struct MontyField31<MP: MontyParameters> {
-    // This is `pub(crate)` for tests and delayed reduction strategies. If you're accessing `value` outside of those, you're
-    // likely doing something fishy.
+    /// The MONTY form of the field element, saved as a positive integer less than `P`.
+    ///
+    /// This is `pub(crate)` for tests and delayed reduction strategies. If you're accessing `value` outside of those, you're
+    /// likely doing something fishy.
     pub(crate) value: u32,
     _phantom: PhantomData<MP>,
 }
@@ -92,6 +93,19 @@ impl<MP: MontyParameters> MontyField31<MP> {
         }
         output
     }
+
+    /// Multiply the given MontyField31 element by `2^{-n}`.
+    ///
+    /// This makes use of the fact that, as the monty constant is `2^32`,
+    /// the monty form of `2^{-n}` is `2^{32 - n}`. Monty reduction works
+    /// provided the input is `< 2^32P` so this works for `0 <= n <= 32`.
+    #[inline]
+    #[must_use]
+    pub const fn mul_2exp_neg_n(&self, n: u32) -> Self {
+        assert!(n < 33);
+        let value_mul_2exp_neg_n = (self.value as u64) << (32 - n);
+        MontyField31::new_monty(monty_reduce::<MP>(value_mul_2exp_neg_n))
+    }
 }
 
 impl<FP: MontyParameters> Ord for MontyField31<FP> {
@@ -135,20 +149,27 @@ impl<FP: MontyParameters> Distribution<MontyField31<FP>> for Standard {
 
 impl<FP: FieldParameters> Serialize for MontyField31<FP> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_u32(self.as_canonical_u32())
+        // It's faster to Serialize and Deserialize in monty form.
+        serializer.serialize_u32(self.value)
     }
 }
 
 impl<'de, FP: FieldParameters> Deserialize<'de> for MontyField31<FP> {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let val = u32::deserialize(d)?;
-        Ok(MontyField31::from_canonical_u32(val))
+        // Ensure that `val` satisfies our invariant, namely is `< P`.
+        if val < FP::PRIME {
+            // It's faster to Serialize and Deserialize in monty form.
+            Ok(MontyField31::new_monty(val))
+        } else {
+            Err(D::Error::custom("Value is out of range"))
+        }
     }
 }
 
 impl<FP: FieldParameters> Packable for MontyField31<FP> {}
 
-impl<FP: FieldParameters> AbstractField for MontyField31<FP> {
+impl<FP: FieldParameters> FieldAlgebra for MontyField31<FP> {
     type F = Self;
 
     const ZERO: Self = FP::MONTY_ZERO;
@@ -205,6 +226,13 @@ impl<FP: FieldParameters> AbstractField for MontyField31<FP> {
     }
 
     #[inline]
+    fn mul_2exp_u64(&self, exp: u64) -> Self {
+        let product = (self.value as u64) << exp;
+        let value = (product % (FP::PRIME as u64)) as u32;
+        Self::new_monty(value)
+    }
+
+    #[inline]
     fn zero_vec(len: usize) -> Vec<Self> {
         // SAFETY: repr(transparent) ensures transmutation safety.
         unsafe { transmute(vec![0u32; len]) }
@@ -244,14 +272,7 @@ impl<FP: FieldParameters> Field for MontyField31<FP> {
     const GENERATOR: Self = FP::MONTY_GEN;
 
     #[inline]
-    fn mul_2exp_u64(&self, exp: u64) -> Self {
-        let product = (self.value as u64) << exp;
-        let value = (product % (FP::PRIME as u64)) as u32;
-        Self::new_monty(value)
-    }
-
-    #[inline]
-    fn exp_u64_generic<AF: AbstractField<F = Self>>(val: AF, power: u64) -> AF {
+    fn exp_u64_generic<FA: FieldAlgebra<F = Self>>(val: FA, power: u64) -> FA {
         FP::exp_u64_generic(val, power)
     }
 
@@ -281,7 +302,14 @@ impl<FP: FieldParameters> PrimeField64 for MontyField31<FP> {
 
     #[inline]
     fn as_canonical_u64(&self) -> u64 {
-        u64::from(self.as_canonical_u32())
+        self.as_canonical_u32().into()
+    }
+
+    #[inline]
+    fn to_unique_u64(&self) -> u64 {
+        // The internal representation is already a unique u32 for each field element.
+        // It's fine to hash things in monty form.
+        self.value as u64
     }
 }
 
@@ -291,6 +319,13 @@ impl<FP: FieldParameters> PrimeField32 for MontyField31<FP> {
     #[inline]
     fn as_canonical_u32(&self) -> u32 {
         MontyField31::to_u32(self)
+    }
+
+    #[inline]
+    fn to_unique_u32(&self) -> u32 {
+        // The internal representation is already a unique u32 for each field element.
+        // It's fine to hash things in monty form.
+        self.value
     }
 }
 

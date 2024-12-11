@@ -3,10 +3,11 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 use core::cell::RefCell;
+use core::iter;
 
 use itertools::izip;
 use p3_dft::TwoAdicSubgroupDft;
-use p3_field::{AbstractField, Field};
+use p3_field::{Field, FieldAlgebra};
 use p3_matrix::bitrev::{BitReversableMatrix, BitReversedMatrixView};
 use p3_matrix::dense::RowMajorMatrix;
 use p3_matrix::Matrix;
@@ -110,11 +111,16 @@ impl<MP: FieldParameters + TwoAdicData> RecursiveDft<MontyField31<MP>> {
             let new_inv_twiddles = new_twiddles
                 .iter()
                 .map(|ts| {
-                    ts.iter()
-                        .rev()
-                        // A twiddle t is never zero, so negation simplifies
-                        // to P - t.
-                        .map(|&t| MontyField31::new_monty(MP::PRIME - t.value))
+                    // The first twiddle is still one, we reverse and negate the rest...
+                    iter::once(MontyField31::ONE)
+                        .chain(
+                            ts[1..]
+                                .iter()
+                                .rev()
+                                // A twiddle t is never zero, so negation simplifies
+                                // to P - t.
+                                .map(|&t| MontyField31::new_monty(MP::PRIME - t.value)),
+                        )
                         .collect()
                 })
                 .collect();

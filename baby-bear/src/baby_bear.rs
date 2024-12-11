@@ -1,4 +1,4 @@
-use p3_field::{exp_1725656503, exp_u64_by_squaring, AbstractField, Field};
+use p3_field::{exp_1725656503, exp_u64_by_squaring, Field, FieldAlgebra};
 use p3_monty_31::{
     BarrettParameters, BinomialExtensionData, FieldParameters, MontyField31, MontyParameters,
     PackedMontyParameters, TwoAdicData,
@@ -26,7 +26,7 @@ impl BarrettParameters for BabyBearParameters {}
 impl FieldParameters for BabyBearParameters {
     const MONTY_GEN: BabyBear = BabyBear::new(31);
 
-    fn exp_u64_generic<AF: AbstractField>(val: AF, power: u64) -> AF {
+    fn exp_u64_generic<FA: FieldAlgebra>(val: FA, power: u64) -> FA {
         match power {
             1725656503 => exp_1725656503(val), // used to compute x^{1/7}
             _ => exp_u64_by_squaring(val, power),
@@ -75,14 +75,15 @@ impl TwoAdicData for BabyBearParameters {
         0x21fd55bc, 0x4b859b3d, 0x3bd57996, 0x4483d85a, 0x3a26eef8, 0x1a427a41,
     ]);
 
-    const ROOTS_8: Self::ArrayLike = &BabyBear::new_array([0x5ee99486, 0x67055c21, 0xc9ea3ba]);
-    const INV_ROOTS_8: Self::ArrayLike = &BabyBear::new_array([0x6b615c47, 0x10faa3e0, 0x19166b7b]);
+    const ROOTS_8: Self::ArrayLike = &BabyBear::new_array([0x1, 0x5ee99486, 0x67055c21, 0xc9ea3ba]);
+    const INV_ROOTS_8: Self::ArrayLike =
+        &BabyBear::new_array([0x1, 0x6b615c47, 0x10faa3e0, 0x19166b7b]);
 
     const ROOTS_16: Self::ArrayLike = &BabyBear::new_array([
-        0xbb4c4e4, 0x5ee99486, 0x4b49e08, 0x67055c21, 0x5376917a, 0xc9ea3ba, 0x563112a7,
+        0x1, 0xbb4c4e4, 0x5ee99486, 0x4b49e08, 0x67055c21, 0x5376917a, 0xc9ea3ba, 0x563112a7,
     ]);
     const INV_ROOTS_16: Self::ArrayLike = &BabyBear::new_array([
-        0x21ceed5a, 0x6b615c47, 0x24896e87, 0x10faa3e0, 0x734b61f9, 0x19166b7b, 0x6c4b3b1d,
+        0x1, 0x21ceed5a, 0x6b615c47, 0x24896e87, 0x10faa3e0, 0x734b61f9, 0x19166b7b, 0x6c4b3b1d,
     ]);
 }
 

@@ -1,15 +1,15 @@
 use std::fmt::Debug;
+use std::marker::PhantomData;
 
-use p3_baby_bear::BabyBear;
+use p3_blake3_air::{generate_trace_rows, Blake3Air};
 use p3_challenger::{HashChallenger, SerializingChallenger32};
+use p3_circle::CirclePcs;
 use p3_commit::ExtensionMmcs;
 use p3_field::extension::BinomialExtensionField;
-use p3_fri::{FriConfig, TwoAdicFriPcs};
+use p3_fri::FriConfig;
 use p3_keccak::Keccak256Hash;
-use p3_keccak_air::{generate_trace_rows, KeccakAir};
-use p3_matrix::Matrix;
 use p3_merkle_tree::MerkleTreeMmcs;
-use p3_monty_31::dft::RecursiveDft;
+use p3_mersenne_31::Mersenne31;
 use p3_symmetric::{CompressionFunctionFromHasher, SerializingHasher32};
 use p3_uni_stark::{prove, verify, StarkConfig};
 use rand::random;
@@ -19,7 +19,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Registry};
 
-const NUM_HASHES: usize = 1365;
+const NUM_HASHES: usize = 1 << 13;
 
 fn main() -> Result<(), impl Debug> {
     let env_filter = EnvFilter::builder()
@@ -31,8 +31,8 @@ fn main() -> Result<(), impl Debug> {
         .with(ForestLayer::default())
         .init();
 
-    type Val = BabyBear;
-    type Challenge = BinomialExtensionField<Val, 4>;
+    type Val = Mersenne31;
+    type Challenge = BinomialExtensionField<Val, 3>;
 
     type ByteHash = Keccak256Hash;
     type FieldHash = SerializingHasher32<ByteHash>;
@@ -50,27 +50,29 @@ fn main() -> Result<(), impl Debug> {
 
     type Challenger = SerializingChallenger32<Val, HashChallenger<u8, ByteHash, 32>>;
 
-    let inputs = (0..NUM_HASHES).map(|_| random()).collect::<Vec<_>>();
-    let trace = generate_trace_rows::<Val>(inputs);
-
     let fri_config = FriConfig {
         log_blowup: 1,
         num_queries: 100,
         proof_of_work_bits: 16,
         mmcs: challenge_mmcs,
     };
-    type Dft = RecursiveDft<Val>;
-    let dft = Dft::new(trace.height() << fri_config.log_blowup);
 
-    type Pcs = TwoAdicFriPcs<Val, Dft, ValMmcs, ChallengeMmcs>;
-    let pcs = Pcs::new(dft, val_mmcs, fri_config);
+    type Pcs = CirclePcs<Val, ValMmcs, ChallengeMmcs>;
+    let pcs = Pcs {
+        mmcs: val_mmcs,
+        fri_config,
+        _phantom: PhantomData,
+    };
 
     type MyConfig = StarkConfig<Pcs, Challenge, Challenger>;
     let config = MyConfig::new(pcs);
 
-    let mut challenger = Challenger::from_hasher(vec![], byte_hash);
-    let proof = prove(&config, &KeccakAir {}, &mut challenger, trace, &vec![]);
+    let inputs = (0..NUM_HASHES).map(|_| random()).collect::<Vec<_>>();
+    let trace = generate_trace_rows::<Val>(inputs);
 
     let mut challenger = Challenger::from_hasher(vec![], byte_hash);
-    verify(&config, &KeccakAir {}, &mut challenger, &proof, &vec![])
+    let proof = prove(&config, &Blake3Air {}, &mut challenger, trace, &vec![]);
+
+    let mut challenger = Challenger::from_hasher(vec![], byte_hash);
+    verify(&config, &Blake3Air {}, &mut challenger, &proof, &vec![])
 }
