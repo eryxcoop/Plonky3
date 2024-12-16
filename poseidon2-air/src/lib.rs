@@ -9,6 +9,7 @@ mod columns;
 mod constants;
 mod generation;
 mod vectorized;
+pub mod qm31;
 
 pub use air::*;
 pub use columns::*;

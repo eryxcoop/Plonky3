@@ -9,6 +9,7 @@ use p3_field::Field;
 use p3_fri::FriConfig;
 use p3_merkle_tree::MerkleTreeMmcs;
 use p3_mersenne_31::{GenericPoseidon2LinearLayersMersenne31, Mersenne31, Poseidon2Mersenne31};
+use p3_poseidon2_air::qm31::QM31;
 use p3_poseidon2_air::{RoundConstants, VectorizedPoseidon2Air};
 use p3_symmetric::{PaddingFreeSponge, TruncatedPermutation};
 use p3_uni_stark::{prove, verify, StarkConfig};
@@ -46,7 +47,7 @@ fn main() -> Result<(), impl Debug> {
         .init();
 
     type Val = Mersenne31;
-    type Challenge = BinomialExtensionField<Val, 3>;
+    type Challenge = QM31;
 
     type Perm16 = Poseidon2Mersenne31<16>;
     let perm16 = Perm16::new_from_rng_128(&mut thread_rng());
