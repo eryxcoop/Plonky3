@@ -1,11 +1,21 @@
-use core::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
-
-use p3_field::{ExtensionField, FieldAlgebra, FieldExtensionAlgebra};
+use core::{iter::{Product, Sum}, ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign, }};
+use core::fmt::{Debug, Display};
+use core::hash::{Hash, Hasher};
+use p3_field::{ExtensionField, Field, FieldAlgebra, FieldExtensionAlgebra, Packable};
 use p3_mersenne_31::{GenericPoseidon2LinearLayersMersenne31, Mersenne31, Poseidon2Mersenne31};
+use serde::{Deserialize, Deserializer, Serialize};
+use num_bigint::BigUint;
 
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct QM31{
+    values: [Mersenne31; 4]
+}
 
-#[derive(Debug)]
-pub struct QM31;
+impl Display for QM31 {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        todo!()
+    }
+}
 
 impl MulAssign<Mersenne31> for QM31{
     fn mul_assign(&mut self, rhs: Mersenne31) {
@@ -43,6 +53,12 @@ impl Sub for QM31{
     }
 }
 
+impl SubAssign for QM31{
+    fn sub_assign(&mut self, rhs: Self) {
+        todo!()
+    }
+}
+
 impl AddAssign<Mersenne31> for QM31{
 
     fn add_assign(&mut self, rhs: Mersenne31) {
@@ -66,14 +82,75 @@ impl Add for QM31{
     }
 }
 
+impl AddAssign for QM31{
+
+    fn add_assign(&mut self, rhs: Self) {
+        todo!()
+    }
+}
+
 impl From<Mersenne31> for QM31{
     fn from(value: Mersenne31) -> Self {
         todo!()
     }
 }
 
+impl Neg for QM31 {
+    type Output = QM31;
+
+    fn neg(self) -> Self::Output {
+        todo!()
+    }
+}
+
+impl Mul for QM31 {
+    type Output = QM31;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        todo!()
+    }
+}
+
+impl MulAssign for QM31{
+    fn mul_assign(&mut self, rhs: Self) {
+        todo!()
+    }
+}
+
+
+impl Product for QM31 {
+    #[inline]
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.reduce(|x, y| x * y).unwrap_or(Self::ONE)
+    }
+}
+
+impl Sum for QM31{
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        todo!()
+    }
+}
+
+impl Div for QM31 {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        todo!()
+    }
+}
+
+impl Hash for QM31{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        todo!()
+    }
+}
+
+impl Packable for QM31{
+    
+}
+
 impl FieldAlgebra for QM31{
-    type F = Mersenne31;
+    type F = QM31;
 
     const ZERO: Self = todo!();
 
@@ -121,7 +198,7 @@ impl FieldAlgebra for QM31{
 }
 
 impl FieldExtensionAlgebra<Mersenne31> for QM31{
-    const D: usize;
+    const D: usize = 4;
 
     fn from_base(b: Mersenne31) -> Self {
         todo!()
@@ -144,6 +221,20 @@ impl FieldExtensionAlgebra<Mersenne31> for QM31{
     }
 }
 
+impl Field for QM31{
+    type Packing = Self;
+
+    const GENERATOR: Self = todo!();
+
+    fn try_inverse(&self) -> Option<Self> {
+        todo!()
+    }
+
+    fn order() -> BigUint {
+        todo!()
+    }
+}
+
 impl ExtensionField<Mersenne31> for QM31{
-    type ExtensionPacking;
+    type ExtensionPacking = QM31;
 }
