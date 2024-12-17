@@ -184,14 +184,21 @@ where
 
     #[inline]
     fn as_base_slice(&self) -> &[AF] {
-        let [real, imaginary] = self.value;
-        let res: &[AF] = vec![real.value[0], real.value[1], imaginary.value[0], imaginary.value[1]].as_slice();
-        // res
-        //&[self.value[0].value[0],self.value[0].value[1], self.value[1].value[0], self.value[1].value[1]]
-        &self.value[0].value
+        // let [real, imaginary] = self.value;
+        // let res: &[AF] = vec![real.value[0], real.value[1], imaginary.value[0], imaginary.value[1]].as_slice();
+        // // res
+        // //&[self.value[0].value[0],self.value[0].value[1], self.value[1].value[0], self.value[1].value[1]]
+        // &self.value[0].value
+
+        let nested = &self.value;
+        unsafe {
+            // Cast the reference to a pointer to the first element of the flattened array
+            let ptr = nested.as_ptr() as *const AF;
+            // Return a slice of `u32` from the pointer
+            std::slice::from_raw_parts(ptr, 4)
+        }
     }
 
 }
-
 
 // */

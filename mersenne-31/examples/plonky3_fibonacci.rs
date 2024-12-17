@@ -201,8 +201,8 @@ fn wide_fibonacci_example_with_poseidon_QM31(
     type CM31 = Complex<Val>;
     type QM31 = BinomialExtensionField<CM31, 2>;
 
-    //type Challenge = QM31;
-    type Challenge = BinomialExtensionField<Val, 3>;
+    type Challenge = QM31;
+    // type Challenge = BinomialExtensionField<Val, 3>;
 
 
     type Perm16 = Poseidon2Mersenne31<16>;
