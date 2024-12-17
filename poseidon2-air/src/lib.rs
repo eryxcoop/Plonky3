@@ -8,8 +8,8 @@ mod air;
 mod columns;
 mod constants;
 mod generation;
-mod vectorized;
 pub mod qm31;
+mod vectorized;
 
 pub use air::*;
 pub use columns::*;
