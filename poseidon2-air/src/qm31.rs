@@ -231,7 +231,9 @@ impl FieldExtensionAlgebra<Mersenne31> for QM31 {
         let c1 = Complex::new(bs[2], bs[3]);
 
         // Construct the binomial extension field element from these two complexes
-        Self(BinomialExtensionField::<Complex::<Mersenne31>, 2>::new(c0, c1))
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            c0, c1,
+        ))
     }
 
     fn from_base_fn<F: FnMut(usize) -> Mersenne31>(f: F) -> Self {
@@ -262,7 +264,10 @@ impl FieldExtensionAlgebra<Mersenne31> for QM31 {
 impl Field for QM31 {
     type Packing = Self;
 
-    const GENERATOR: Self = todo!();
+    const GENERATOR: Self = Self(InnerQM31::from_base_slice(&[
+        Complex::<Mersenne31>::from_base(Mersenne31::new(0)),
+        Complex::<Mersenne31>::from_base(Mersenne31::new(1)),
+    ]));
 
     fn try_inverse(&self) -> Option<Self> {
         todo!()
