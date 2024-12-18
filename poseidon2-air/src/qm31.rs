@@ -2,6 +2,7 @@ use core::fmt::{Debug, Display};
 use core::hash::{Hash, Hasher};
 use core::iter::{Product, Sum};
 use core::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
+use core::{array, slice};
 
 use num_bigint::BigUint;
 use p3_field::extension::{BinomialExtensionField, Complex};
@@ -25,7 +26,8 @@ impl Display for QM31 {
 
 impl MulAssign<Mersenne31> for QM31 {
     fn mul_assign(&mut self, rhs: Mersenne31) {
-        todo!()
+        self.0.value[0].mul_assign(rhs);
+        self.0.value[1].mul_assign(rhs);
     }
 }
 
@@ -33,13 +35,16 @@ impl Mul<Mersenne31> for QM31 {
     type Output = QM31;
 
     fn mul(self, rhs: Mersenne31) -> Self::Output {
-        todo!()
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].mul(rhs),
+            self.0.value[1].mul(rhs),
+        ))
     }
 }
 
 impl SubAssign<Mersenne31> for QM31 {
     fn sub_assign(&mut self, rhs: Mersenne31) {
-        todo!()
+        self.0.value[0].sub_assign(rhs);
     }
 }
 
@@ -47,7 +52,10 @@ impl Sub<Mersenne31> for QM31 {
     type Output = QM31;
 
     fn sub(self, rhs: Mersenne31) -> Self::Output {
-        todo!()
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].sub(rhs),
+            self.0.value[1],
+        ))
     }
 }
 
@@ -55,19 +63,23 @@ impl Sub for QM31 {
     type Output = QM31;
 
     fn sub(self, rhs: QM31) -> Self::Output {
-        todo!()
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].sub(rhs.0.value[0]),
+            self.0.value[1].sub(rhs.0.value[1]),
+        ))
     }
 }
 
 impl SubAssign for QM31 {
     fn sub_assign(&mut self, rhs: Self) {
-        todo!()
+        self.0.value[0].sub_assign(rhs.0.value[0]);
+        self.0.value[1].sub_assign(rhs.0.value[1]);
     }
 }
 
 impl AddAssign<Mersenne31> for QM31 {
     fn add_assign(&mut self, rhs: Mersenne31) {
-        todo!()
+        self.0.value[0].add_assign(rhs);
     }
 }
 
@@ -75,7 +87,10 @@ impl Add<Mersenne31> for QM31 {
     type Output = QM31;
 
     fn add(self, rhs: Mersenne31) -> Self::Output {
-        todo!()
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].add(rhs),
+            self.0.value[1],
+        ))
     }
 }
 
@@ -83,13 +98,17 @@ impl Add for QM31 {
     type Output = QM31;
 
     fn add(self, rhs: QM31) -> Self::Output {
-        todo!()
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].add(rhs.0.value[0]),
+            self.0.value[1].add(rhs.0.value[1]),
+        ))
     }
 }
 
 impl AddAssign for QM31 {
     fn add_assign(&mut self, rhs: Self) {
-        todo!()
+        self.0.value[0].add_assign(rhs.0.value[0]);
+        self.0.value[1].add_assign(rhs.0.value[1]);
     }
 }
 
@@ -207,19 +226,36 @@ impl FieldExtensionAlgebra<Mersenne31> for QM31 {
     }
 
     fn from_base_slice(bs: &[Mersenne31]) -> Self {
-        todo!()
+        let c0 = Complex::new(bs[0], bs[1]);
+        // Construct the second complex number using the next two Mersenne31 values
+        let c1 = Complex::new(bs[2], bs[3]);
+
+        // Construct the binomial extension field element from these two complexes
+        Self(BinomialExtensionField::<Complex::<Mersenne31>, 2>::new(c0, c1))
     }
 
     fn from_base_fn<F: FnMut(usize) -> Mersenne31>(f: F) -> Self {
-        todo!()
+        // Construct the first complex number using two Mersenne31 values
+        let bs: [Mersenne31; 4] = array::from_fn(f);
+        Self::from_base_slice(&bs)
     }
 
     fn from_base_iter<I: Iterator<Item = Mersenne31>>(iter: I) -> Self {
-        todo!()
+        let mut bs: [Mersenne31; 4] = [Mersenne31::new(0); 4];
+        for (i, b) in iter.enumerate() {
+            bs[i] = b;
+        }
+        Self::from_base_slice(&bs)
     }
 
     fn as_base_slice(&self) -> &[Mersenne31] {
-        todo!()
+        let nested = &self.0.value;
+        unsafe {
+            // Cast the reference to a pointer to the first element of the flattened array
+            let ptr = nested.as_ptr() as *const Mersenne31;
+            // Return a slice of `u32` from the pointer
+            slice::from_raw_parts(ptr, 4)
+        }
     }
 }
 
