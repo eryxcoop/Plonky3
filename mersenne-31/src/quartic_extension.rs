@@ -1,123 +1,524 @@
-use alloc::format;
-use alloc::string::ToString;
-use alloc::vec::Vec;
-use core::array;
-use core::fmt::{self, Debug, Display, Formatter};
+use core::fmt::{Debug, Display};
+use core::hash::{Hash, Hasher};
 use core::iter::{Product, Sum};
-use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
+use core::{array, slice};
 
-use extension::BinomiallyExtendable;
-use itertools::Itertools;
 use num_bigint::BigUint;
-use p3_field::extension::{self, BinomialExtensionField};
-use p3_field::FieldAlgebra;
-use p3_util::convert_vec;
-use rand::distributions::Standard;
-use rand::prelude::Distribution;
-use serde::{Deserialize, Serialize};
+use p3_field::extension::{BinomialExtensionField, Complex};
+use p3_field::{ExtensionField, Field, FieldAlgebra, FieldExtensionAlgebra, Packable};
+
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::Mersenne31;
 
-type QuarticExtension = BinomialExtensionField<BinomialExtensionField<Mersenne31, 2>, 2>;
+type InnerQM31 = BinomialExtensionField<Complex<Mersenne31>, 2>;
+#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct QM31(BinomialExtensionField<Complex<Mersenne31>, 2>);
 
-#[cfg(test)]
-mod tests {
-    use extension::Complex;
-    use itertools::Itertools;
-    use {FieldAlgebra, Mersenne31};
+// impl ExtensionField<Mersenne31> for QM31{
+//     type ExtensionPacking = Self;
+// }
 
-    use super::*;
+impl Display for QM31 {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        Display::fmt(&self.0, f)
+    }
+}
 
-    type CM31 = Complex<Mersenne31>;
-    type QM31 = QuarticExtension;
+impl MulAssign<Mersenne31> for QM31 {
+    fn mul_assign(&mut self, rhs: Mersenne31) {
+        self.0.value[0].mul_assign(rhs);
+        self.0.value[1].mul_assign(rhs);
+    }
+}
 
-    fn get_quartic_extension_element() -> (
-        Mersenne31,
-        Mersenne31,
-        Mersenne31,
-        Mersenne31,
-        Complex<Mersenne31>,
-        Complex<Mersenne31>,
-        QuarticExtension,
-    ) {
-        let a = Mersenne31::new(1);
-        let b = Mersenne31::new(2);
-        let c = Mersenne31::new(3);
-        let d = Mersenne31::new(4);
-        let real: Complex<Mersenne31> = BinomialExtensionField::new(a, b);
+impl Mul<Mersenne31> for QM31 {
+    type Output = QM31;
 
-        let imaginary: Complex<Mersenne31> = BinomialExtensionField::new(c, d);
-        let quartic_element: QuarticExtension = QM31::new(real, imaginary);
-        (a, b, c, d, real, imaginary, quartic_element)
+    fn mul(self, rhs: Mersenne31) -> Self::Output {
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].mul(rhs),
+            self.0.value[1].mul(rhs),
+        ))
+    }
+}
+
+impl SubAssign<Mersenne31> for QM31 {
+    fn sub_assign(&mut self, rhs: Mersenne31) {
+        self.0.value[0].sub_assign(rhs);
+    }
+}
+
+impl Sub<Mersenne31> for QM31 {
+    type Output = QM31;
+
+    fn sub(self, rhs: Mersenne31) -> Self::Output {
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].sub(rhs),
+            self.0.value[1],
+        ))
+    }
+}
+
+impl Sub for QM31 {
+    type Output = QM31;
+
+    fn sub(self, rhs: QM31) -> Self::Output {
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].sub(rhs.0.value[0]),
+            self.0.value[1].sub(rhs.0.value[1]),
+        ))
+    }
+}
+
+impl SubAssign for QM31 {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0.value[0].sub_assign(rhs.0.value[0]);
+        self.0.value[1].sub_assign(rhs.0.value[1]);
+    }
+}
+
+impl AddAssign<Mersenne31> for QM31 {
+    fn add_assign(&mut self, rhs: Mersenne31) {
+        self.0.value[0].add_assign(rhs);
+    }
+}
+
+impl Add<Mersenne31> for QM31 {
+    type Output = QM31;
+
+    fn add(self, rhs: Mersenne31) -> Self::Output {
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].add(rhs),
+            self.0.value[1],
+        ))
+    }
+}
+
+impl Add for QM31 {
+    type Output = QM31;
+
+    fn add(self, rhs: QM31) -> Self::Output {
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].add(rhs.0.value[0]),
+            self.0.value[1].add(rhs.0.value[1]),
+        ))
+    }
+}
+
+impl AddAssign for QM31 {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0.value[0].add_assign(rhs.0.value[0]);
+        self.0.value[1].add_assign(rhs.0.value[1]);
+    }
+}
+
+impl From<Mersenne31> for QM31 {
+    fn from(value: Mersenne31) -> Self {
+        let cm31: Complex<Mersenne31> = value.into();
+        Self(cm31.into())
+    }
+}
+
+impl Neg for QM31 {
+    type Output = QM31;
+
+    fn neg(self) -> Self::Output {
+        Self(self.0.neg())
+    }
+}
+
+impl Mul for QM31 {
+    type Output = QM31;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self(self.0 * rhs.0)
+    }
+}
+
+impl MulAssign for QM31 {
+    fn mul_assign(&mut self, rhs: Self) {
+        MulAssign::mul_assign(&mut self.0, rhs.0)
+    }
+}
+
+impl Product for QM31 {
+    #[inline]
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.reduce(|x, y| x * y).unwrap_or(Self::ONE)
+    }
+}
+
+impl Sum for QM31 {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.reduce(|x, y| x + y).unwrap_or(Self::ZERO)
+    }
+}
+
+impl Div for QM31 {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        Self(self.0 / rhs.0)
+    }
+}
+
+impl Hash for QM31 {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Hash::hash(&self.0, state);
+    }
+}
+
+impl Packable for QM31 {}
+
+impl FieldAlgebra for QM31 {
+    type F = QM31;
+
+    const ZERO: Self = Self(InnerQM31::ZERO);
+
+    const ONE: Self = Self(InnerQM31::ONE);
+
+    const TWO: Self = Self(InnerQM31::TWO);
+
+    const NEG_ONE: Self = Self(InnerQM31::NEG_ONE);
+
+    fn from_f(f: Self::F) -> Self {
+        Self(InnerQM31::from_f(f.0))
     }
 
-    #[test]
-    fn test_can_multiply_with_base_field() {
-        let factor: Mersenne31 = Mersenne31::new(2);
-        let (a, b, c, d, real, imaginary, quartic_element) = get_quartic_extension_element();
-        let expected_real = BinomialExtensionField::new(a * factor, b * factor);
-        let expected_imaginary = BinomialExtensionField::new(c * factor, d * factor);
-        let expected_result = QM31::new(expected_real, expected_imaginary);
-
-        let multiplication = Mul::<Mersenne31>::mul(quartic_element, factor);
-
-        assert_eq!(multiplication, expected_result);
+    fn from_bool(b: bool) -> Self {
+        Self(InnerQM31::from_bool(b))
     }
 
-    #[test]
-    fn test_can_subtract_with_base_field() {
-        let factor: Mersenne31 = Mersenne31::new(1);
-        let (a, b, c, d, real, imaginary, quartic_element) = get_quartic_extension_element();
-
-        let expected_real = BinomialExtensionField::new(Mersenne31::ZERO, b);
-        let expected_imaginary = BinomialExtensionField::new(c, d);
-
-        let expected_result = QM31::new(expected_real, expected_imaginary);
-
-        let subtraction = Sub::<Mersenne31>::sub(quartic_element, factor);
-        assert_eq!(subtraction, expected_result);
+    fn from_canonical_u8(n: u8) -> Self {
+        Self(InnerQM31::from_canonical_u8(n))
     }
 
-    #[test]
-    fn test_can_subtract_assign_with_base_field() {
-        let factor: Mersenne31 = Mersenne31::new(1);
-        let (a, b, c, d, real, imaginary, mut quartic_element) = get_quartic_extension_element();
-
-        let expected_real = BinomialExtensionField::new(Mersenne31::ZERO, b);
-        let expected_imaginary = BinomialExtensionField::new(c, d);
-
-        let expected_result = QM31::new(expected_real, expected_imaginary);
-
-        SubAssign::<Mersenne31>::sub_assign(&mut quartic_element, factor);
-        assert_eq!(quartic_element, expected_result);
+    fn from_canonical_u16(n: u16) -> Self {
+        Self(InnerQM31::from_canonical_u16(n))
     }
 
-    #[test]
-    fn test_can_add_assign_with_base_field() {
-        let factor: Mersenne31 = Mersenne31::new(1);
-        let (a, b, c, d, _, _, mut quartic_element) = get_quartic_extension_element();
-        let expected_real = BinomialExtensionField::new(Mersenne31::TWO, b);
-        let expected_imaginary = BinomialExtensionField::new(c, d);
-        let expected_result = QM31::new(expected_real, expected_imaginary);
-
-        AddAssign::<Mersenne31>::add_assign(&mut quartic_element, factor);
-
-        assert_eq!(quartic_element, expected_result);
+    fn from_canonical_u32(n: u32) -> Self {
+        Self(InnerQM31::from_canonical_u32(n))
     }
 
-    #[test]
-    fn test_can_instantiate_from_base_field() {
-        let element = QuarticExtension::from(Mersenne31::new(1));
-
-        let a = Mersenne31::new(1);
-        let b = Mersenne31::new(0);
-        let c = Mersenne31::new(0);
-        let d = Mersenne31::new(0);
-        let real: Complex<Mersenne31> = BinomialExtensionField::new(a, b);
-
-        let imaginary: Complex<Mersenne31> = BinomialExtensionField::new(c, d);
-        let expected_result: QuarticExtension = QM31::new(real, imaginary);
-
-        assert_eq!(element, expected_result);
+    fn from_canonical_u64(n: u64) -> Self {
+        Self(InnerQM31::from_canonical_u64(n))
     }
+
+    fn from_canonical_usize(n: usize) -> Self {
+        Self(InnerQM31::from_canonical_usize(n))
+    }
+
+    fn from_wrapped_u32(n: u32) -> Self {
+        Self(InnerQM31::from_wrapped_u32(n))
+    }
+
+    fn from_wrapped_u64(n: u64) -> Self {
+        Self(InnerQM31::from_wrapped_u64(n))
+    }
+}
+
+impl FieldExtensionAlgebra<Mersenne31> for QM31 {
+    const D: usize = 4;
+
+    fn from_base(b: Mersenne31) -> Self {
+        Self(InnerQM31::from_base(Complex::<Mersenne31>::from_base(b)))
+    }
+
+    fn from_base_slice(bs: &[Mersenne31]) -> Self {
+        let c0 = Complex::new(bs[0], bs[1]);
+        // Construct the second complex number using the next two Mersenne31 values
+        let c1 = Complex::new(bs[2], bs[3]);
+
+        // Construct the binomial extension field element from these two complexes
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            c0, c1,
+        ))
+    }
+
+    fn from_base_fn<F: FnMut(usize) -> Mersenne31>(f: F) -> Self {
+        // Construct the first complex number using two Mersenne31 values
+        let bs: [Mersenne31; 4] = array::from_fn(f);
+        Self::from_base_slice(&bs)
+    }
+
+    fn from_base_iter<I: Iterator<Item = Mersenne31>>(iter: I) -> Self {
+        let mut bs: [Mersenne31; 4] = [Mersenne31::new(0); 4];
+        for (i, b) in iter.enumerate() {
+            bs[i] = b;
+        }
+        Self::from_base_slice(&bs)
+    }
+
+    fn as_base_slice(&self) -> &[Mersenne31] {
+        let nested = &self.0.value;
+        unsafe {
+            // Cast the reference to a pointer to the first element of the flattened array
+            let ptr = nested.as_ptr() as *const Mersenne31;
+            // Return a slice of `u32` from the pointer
+            slice::from_raw_parts(ptr, 4)
+        }
+    }
+}
+
+impl Field for QM31 {
+    type Packing = Self;
+
+    const GENERATOR: Self = Self(InnerQM31 {
+        value: [
+            Complex::<Mersenne31>::ZERO, //{value: [Mersenne31::ZERO, Mersenne31{value:0}]},
+            Complex::<Mersenne31>::ONE,
+        ],
+    });
+
+    fn try_inverse(&self) -> Option<Self> {
+        if self.0.is_zero() {
+            return None;
+        }
+        // (a + bu)^-1 = (a - bu) / (a^2 - u^2 b^2).
+        let [a, b] = self.0.value;
+        let u_square = Complex::<Mersenne31>::new(Mersenne31::TWO, Mersenne31::ONE);
+        let denominator = a.square() - u_square * b.square();
+
+        let res_a = a * denominator.inverse();
+        let res_b = -b * denominator.inverse();
+        Some(Self(InnerQM31::from_base_slice(&[res_a, res_b])))
+    }
+
+    fn order() -> BigUint {
+        let p: u32 = (1 << 31) - 1; // TODO: import p from Mersenne 31
+        BigUint::from(p ^ 4)
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default)]
+pub struct QM31ExtensionPacking(<BinomialExtensionField<Complex<Mersenne31>, 2> as ExtensionField<Complex<Mersenne31>>>::ExtensionPacking);
+type InnerQM31ExtensionPacking = <BinomialExtensionField<Complex<Mersenne31>, 2> as ExtensionField<Complex<Mersenne31>>>::ExtensionPacking;
+
+impl MulAssign<Mersenne31> for QM31ExtensionPacking {
+    fn mul_assign(&mut self, rhs: Mersenne31) {
+        self.0.value[0].mul_assign(rhs);
+        self.0.value[1].mul_assign(rhs);
+    }
+}
+
+impl Mul<Mersenne31> for QM31ExtensionPacking {
+    type Output = QM31ExtensionPacking;
+
+    fn mul(self, rhs: Mersenne31) -> Self::Output {
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].mul(rhs),
+            self.0.value[1].mul(rhs),
+        ))
+    }
+}
+
+impl SubAssign<Mersenne31> for QM31ExtensionPacking {
+    fn sub_assign(&mut self, rhs: Mersenne31) {
+        self.0.value[0].sub_assign(rhs);
+    }
+}
+
+impl Sub<Mersenne31> for QM31ExtensionPacking {
+    type Output = QM31ExtensionPacking;
+
+    fn sub(self, rhs: Mersenne31) -> Self::Output {
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].sub(rhs),
+            self.0.value[1],
+        ))
+    }
+}
+
+impl AddAssign<Mersenne31> for QM31ExtensionPacking {
+    fn add_assign(&mut self, rhs: Mersenne31) {
+        self.0.value[0].add_assign(rhs);
+    }
+}
+
+impl Add<Mersenne31> for QM31ExtensionPacking {
+    type Output = QM31ExtensionPacking;
+
+    fn add(self, rhs: Mersenne31) -> Self::Output {
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].add(rhs),
+            self.0.value[1],
+        ))
+    }
+}
+
+impl From<Mersenne31> for QM31ExtensionPacking {
+    fn from(value: Mersenne31) -> Self {
+        let cm31: Complex<Mersenne31> = value.into();
+        Self(cm31.into())
+    }
+}
+
+impl Product for QM31ExtensionPacking {
+    #[inline]
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.reduce(|x, y| x * y).unwrap_or(Self::ONE)
+    }
+}
+
+impl Sum for QM31ExtensionPacking {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.reduce(|x, y| x + y).unwrap_or(Self::ZERO)
+    }
+}
+
+impl Add for QM31ExtensionPacking {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].add(rhs.0.value[0]),
+            self.0.value[1].add(rhs.0.value[1]),
+        ))
+    }
+}
+
+impl AddAssign for QM31ExtensionPacking {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0.value[0].add_assign(rhs.0.value[0]);
+        self.0.value[1].add_assign(rhs.0.value[1]);
+    }
+}
+
+impl Mul for QM31ExtensionPacking {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self(self.0 * rhs.0)
+    }
+}
+
+impl MulAssign for QM31ExtensionPacking {
+    fn mul_assign(&mut self, rhs: Self) {
+        MulAssign::mul_assign(&mut self.0, rhs.0)
+    }
+}
+
+impl SubAssign for QM31ExtensionPacking {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0.value[0].sub_assign(rhs.0.value[0]);
+        self.0.value[1].sub_assign(rhs.0.value[1]);
+    }
+}
+
+impl Sub for QM31ExtensionPacking {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            self.0.value[0].sub(rhs.0.value[0]),
+            self.0.value[1].sub(rhs.0.value[1]),
+        ))
+    }
+}
+
+impl Neg for QM31ExtensionPacking {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self(self.0.neg())
+    }
+}
+
+impl FieldAlgebra for QM31ExtensionPacking {
+    type F = QM31;
+
+    const ZERO: Self = Self(InnerQM31ExtensionPacking::ZERO);
+
+    const ONE: Self = Self(InnerQM31ExtensionPacking::ONE);
+
+    const TWO: Self = Self(InnerQM31ExtensionPacking::TWO);
+
+    const NEG_ONE: Self = Self(InnerQM31ExtensionPacking::NEG_ONE);
+
+    fn from_f(f: Self::F) -> Self {
+        Self(InnerQM31ExtensionPacking::from_f(f.0))
+    }
+
+    fn from_bool(b: bool) -> Self {
+        Self(InnerQM31ExtensionPacking::from_bool(b))
+    }
+
+    fn from_canonical_u8(n: u8) -> Self {
+        Self(InnerQM31ExtensionPacking::from_canonical_u8(n))
+    }
+
+    fn from_canonical_u16(n: u16) -> Self {
+        Self(InnerQM31ExtensionPacking::from_canonical_u16(n))
+    }
+
+    fn from_canonical_u32(n: u32) -> Self {
+        Self(InnerQM31ExtensionPacking::from_canonical_u32(n))
+    }
+
+    fn from_canonical_u64(n: u64) -> Self {
+        Self(InnerQM31ExtensionPacking::from_canonical_u64(n))
+    }
+
+    fn from_canonical_usize(n: usize) -> Self {
+        Self(InnerQM31ExtensionPacking::from_canonical_usize(n))
+    }
+
+    fn from_wrapped_u32(n: u32) -> Self {
+        Self(InnerQM31ExtensionPacking::from_wrapped_u32(n))
+    }
+
+    fn from_wrapped_u64(n: u64) -> Self {
+        Self(InnerQM31ExtensionPacking::from_wrapped_u64(n))
+    }
+}
+
+impl FieldExtensionAlgebra<Mersenne31> for QM31ExtensionPacking {
+    const D: usize = todo!();
+
+    fn from_base(b: Mersenne31) -> Self {
+        Self(InnerQM31ExtensionPacking::from_base(
+            Complex::<Mersenne31>::from_base(b),
+        ))
+    }
+
+    fn from_base_slice(bs: &[Mersenne31]) -> Self {
+        let c0 = Complex::new(bs[0], bs[1]);
+        // Construct the second complex number using the next two Mersenne31 values
+        let c1 = Complex::new(bs[2], bs[3]);
+
+        // Construct the binomial extension field element from these two complexes
+        Self(BinomialExtensionField::<Complex<Mersenne31>, 2>::new(
+            c0, c1,
+        ))
+    }
+
+    fn from_base_fn<F: FnMut(usize) -> Mersenne31>(f: F) -> Self {
+        let bs: [Mersenne31; 4] = array::from_fn(f);
+        Self::from_base_slice(&bs)
+    }
+
+    fn from_base_iter<I: Iterator<Item = Mersenne31>>(iter: I) -> Self {
+        let mut bs: [Mersenne31; 4] = [Mersenne31::new(0); 4];
+        for (i, b) in iter.enumerate() {
+            bs[i] = b;
+        }
+        Self::from_base_slice(&bs)
+    }
+
+    fn as_base_slice(&self) -> &[Mersenne31] {
+        let nested = &self.0.value;
+        unsafe {
+            // Cast the reference to a pointer to the first element of the flattened array
+            let ptr = nested.as_ptr() as *const Mersenne31;
+            // Return a slice of `u32` from the pointer
+            slice::from_raw_parts(ptr, 4)
+        }
+    }
+}
+
+impl ExtensionField<Mersenne31> for QM31 {
+    type ExtensionPacking = QM31ExtensionPacking;
 }

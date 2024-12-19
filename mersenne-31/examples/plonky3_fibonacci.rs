@@ -13,7 +13,7 @@ use p3_fri::FriConfig;
 use p3_matrix::dense::RowMajorMatrix;
 use p3_matrix::Matrix;
 use p3_merkle_tree::MerkleTreeMmcs;
-use p3_mersenne_31::{Mersenne31, Poseidon2Mersenne31};
+use p3_mersenne_31::{Mersenne31, Poseidon2Mersenne31, quartic_extension::QM31};
 use p3_poseidon2::{Poseidon2};
 
 use p3_symmetric::{
@@ -199,10 +199,10 @@ fn wide_fibonacci_example_with_poseidon_QM31(
 
     type Val = Mersenne31;
     type CM31 = Complex<Val>;
-    type QM31 = BinomialExtensionField<CM31, 2>;
+    // type QM31 = BinomialExtensionField<CM31, 2>;
 
     type Challenge = QM31;
-    // type Challenge = BinomialExtensionField<Val, 3>;
+    //type Challenge = BinomialExtensionField<Val, 3>;
 
 
     type Perm16 = Poseidon2Mersenne31<16>;

@@ -110,7 +110,7 @@ impl HasTwoAdicComplexBinomialExtension<3> for Mersenne31 {
 }
 
 type CM31 = Complex<Mersenne31>;
-type QM31 = BinomialExtensionField<CM31, 2>;
+//type QM31 = BinomialExtensionField<CM31, 2>;
 
 // impl AbstractField for QM31{
 
